@@ -1,5 +1,6 @@
 import NextAuth, { type NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import GoogleProvider from "next-auth/providers/google";
 import { getSQL } from "@/lib/db";
 
 /**
@@ -10,6 +11,10 @@ import { getSQL } from "@/lib/db";
  */
 export const authOptions: NextAuthOptions = {
   providers: [
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID || "",
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+    }),
     CredentialsProvider({
       name: "Email",
       credentials: {
@@ -54,8 +59,32 @@ export const authOptions: NextAuthOptions = {
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
+    async signIn({ user, account }) {
+      if (account?.provider === "google" && user.email) {
+        const sql = getSQL();
+        const email = user.email.toLowerCase().trim();
+        const existing = await sql`
+          SELECT id FROM mirror_users WHERE email = ${email}
+        `;
+        if (existing.length === 0) {
+          await sql`
+            INSERT INTO mirror_users (email, display_name)
+            VALUES (${email}, ${user.name || null})
+          `;
+        }
+      }
+      return true;
+    },
+    async jwt({ token, user, account }) {
+      if (user && account?.provider === "google" && user.email) {
+        const sql = getSQL();
+        const existing = await sql`
+          SELECT id FROM mirror_users WHERE email = ${user.email.toLowerCase().trim()}
+        `;
+        if (existing.length > 0) {
+          token.userId = existing[0].id as string;
+        }
+      } else if (user) {
         token.userId = user.id;
       }
       return token;
