@@ -23,7 +23,7 @@ export const authOptions: NextAuthOptions = {
 
         // Find or create user
         const existing = await sql`
-          SELECT id, email, display_name FROM users WHERE email = ${email}
+          SELECT id, email, display_name FROM mirror_users WHERE email = ${email}
         `;
 
         if (existing.length > 0) {
@@ -36,7 +36,7 @@ export const authOptions: NextAuthOptions = {
 
         // Auto-create for MVP (replace with verification later)
         const created = await sql`
-          INSERT INTO users (email)
+          INSERT INTO mirror_users (email)
           VALUES (${email})
           RETURNING id, email, display_name
         `;

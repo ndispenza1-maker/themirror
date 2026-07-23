@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
   }
 
   const userId = (session.user as { id: string }).id;
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.ANTHROPIC_API_KEY || process.env.MYCLAW_API_KEY;
   if (!apiKey) {
     return NextResponse.json({ error: "Engine not configured" }, { status: 500 });
   }
@@ -182,7 +182,7 @@ export async function POST(req: NextRequest) {
     // Save diary entry
     const sql = getSQL();
     await sql`
-      INSERT INTO diary_entries (user_id, content, c, lfh_dominant, ei, ntr_density, delta_i, bridges_found, creature_tier, creature_archetype, read)
+      INSERT INTO mirror_diary_entries (user_id, content, c, lfh_dominant, ei, ntr_density, delta_i, bridges_found, creature_tier, creature_archetype, read)
       VALUES (${userId}, ${sanitizedContent}, ${c}, ${lfhDominant}, ${ei}, ${ntrDensity}, ${deltaI}, ${JSON.stringify(bridges)}, '', '', ${parsed.read || ""})
     `;
 

@@ -15,9 +15,9 @@ async function migrate() {
 
   const sql = neon(url);
 
-  // Users table
+  // Users table (prefixed to avoid collision with Garage)
   await sql`
-    CREATE TABLE IF NOT EXISTS users (
+    CREATE TABLE IF NOT EXISTS mirror_users (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       email TEXT UNIQUE NOT NULL,
       display_name TEXT,
@@ -28,9 +28,9 @@ async function migrate() {
 
   // Diary entries — raw writing from users
   await sql`
-    CREATE TABLE IF NOT EXISTS diary_entries (
+    CREATE TABLE IF NOT EXISTS mirror_diary_entries (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      user_id UUID NOT NULL REFERENCES mirror_users(id) ON DELETE CASCADE,
       content TEXT NOT NULL,
       c NUMERIC(4,3),
       lfh_dominant TEXT,
@@ -47,8 +47,8 @@ async function migrate() {
 
   // User profile — accumulated state
   await sql`
-    CREATE TABLE IF NOT EXISTS user_profiles (
-      user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    CREATE TABLE IF NOT EXISTS mirror_profiles (
+      user_id UUID PRIMARY KEY REFERENCES mirror_users(id) ON DELETE CASCADE,
       cumulative_ei INTEGER NOT NULL DEFAULT 0,
       all_bridges JSONB NOT NULL DEFAULT '[]',
       total_entries INTEGER NOT NULL DEFAULT 0,
@@ -68,18 +68,18 @@ async function migrate() {
 
   // Switch events — when the user confirms they acted
   await sql`
-    CREATE TABLE IF NOT EXISTS switch_events (
+    CREATE TABLE IF NOT EXISTS mirror_switch_events (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      diary_entry_id UUID REFERENCES diary_entries(id) ON DELETE SET NULL,
+      user_id UUID NOT NULL REFERENCES mirror_users(id) ON DELETE CASCADE,
+      diary_entry_id UUID REFERENCES mirror_diary_entries(id) ON DELETE SET NULL,
       action_taken TEXT,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `;
 
   // Indexes for performance
-  await sql`CREATE INDEX IF NOT EXISTS idx_diary_user_date ON diary_entries(user_id, created_at DESC)`;
-  await sql`CREATE INDEX IF NOT EXISTS idx_switch_user ON switch_events(user_id, created_at DESC)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_mirror_diary_user_date ON mirror_diary_entries(user_id, created_at DESC)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_mirror_switch_user ON mirror_switch_events(user_id, created_at DESC)`;
 
   console.log("✅ Migration complete — all tables created.");
 }

@@ -58,12 +58,12 @@ export async function getUserProfile(userId: string) {
   const sql = getSQL();
   
   const rows = await sql`
-    SELECT * FROM user_profiles WHERE user_id = ${userId}
+    SELECT * FROM mirror_profiles WHERE user_id = ${userId}
   `;
 
   if (rows.length === 0) {
     await sql`
-      INSERT INTO user_profiles (user_id) VALUES (${userId})
+      INSERT INTO mirror_profiles (user_id) VALUES (${userId})
       ON CONFLICT (user_id) DO NOTHING
     `;
     return {
@@ -129,7 +129,7 @@ export async function updateProfileAfterEntry(
   const mergedBridges = [...new Set([...existingBridges, ...newBridges])];
 
   await sql`
-    UPDATE user_profiles SET
+    UPDATE mirror_profiles SET
       cumulative_ei = cumulative_ei + ${newEi},
       all_bridges = ${JSON.stringify(mergedBridges)},
       total_entries = total_entries + 1,
