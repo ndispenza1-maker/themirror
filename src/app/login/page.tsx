@@ -39,7 +39,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm space-y-8">
         {/* Header */}
         <div className="text-center space-y-2">
-          <h1 className="text-3xl font-bold text-[var(--foreground)]">The Mirror</h1>
+          <h1 className="text-3xl font-bold text-[var(--foreground)]">DailyMorph</h1>
           <p className="text-sm text-[var(--muted)]">
             {mode === "login" ? "See your reflection." : "Create your reflection."}
           </p>

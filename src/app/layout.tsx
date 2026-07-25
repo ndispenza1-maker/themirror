@@ -3,7 +3,7 @@ import Providers from "@/components/Providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "The Mirror",
+  title: "DailyMorph",
   description: "See yourself. Find the switch. Act.",
   robots: { index: false, follow: false }, // stealth mode
 };

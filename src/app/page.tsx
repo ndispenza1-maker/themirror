@@ -61,10 +61,10 @@ export default function Home() {
       <div className="w-full max-w-lg space-y-8">
         {/* Header */}
         <div className="text-center space-y-2">
-          <h1 className="text-2xl font-bold text-[var(--foreground)]">The Mirror</h1>
+          <h1 className="text-2xl font-bold text-[var(--foreground)]">DailyMorph</h1>
           <p className="text-sm text-[var(--muted)]">
             {!result
-              ? "Write what's on your mind. The mirror shows you what's underneath."
+              ? "Write what's on your mind. See what's underneath."
               : "Your reflection, right now."}
           </p>
         </div>

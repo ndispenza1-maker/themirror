@@ -43,7 +43,7 @@ export default function DiaryInput({ onSubmit, loading }: DiaryInputProps) {
           disabled={!content.trim() || content.trim().length < 10 || loading}
           className="px-5 py-2.5 bg-[var(--accent)] text-[var(--background)] font-semibold text-sm rounded-lg hover:bg-[var(--accent-dim)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
         >
-          {loading ? "Reading..." : "Show me the mirror"}
+          {loading ? "Reading..." : "Show me the morph"}
         </button>
       </div>
     </div>

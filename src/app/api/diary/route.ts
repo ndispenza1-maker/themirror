@@ -4,7 +4,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { getSQL } from "@/lib/db";
 import { getUserProfile, updateProfileAfterEntry } from "@/lib/creature";
 
-const MIRROR_SYSTEM_PROMPT = `You are The Mirror — an equation engine that reads a person's state from their writing and calculates their accessible potential.
+const MIRROR_SYSTEM_PROMPT = `You are DailyMorph — an equation engine that reads a person's state from their writing and calculates their accessible potential.
 
 ## The Equation: ΔI = (C × EI)^NTR
 
@@ -71,16 +71,16 @@ Return ONLY a JSON object:
 }
 
 ## Voice
-- Plain. Direct. Mirror, not therapist.
+- Plain. Direct. Morph engine, not therapist.
 - Point to specific language that reveals state.
 - Name bridges from THEIR world.
 - Non-judgmental — animal state isn't bad, it's just visible.
-- End with one clear line: what the mirror shows.
+- End with one clear line: what the morph shows.
 
 ## Rules
 - ALWAYS find at least 1 bridge (even a small one)
 - The read must reference their ACTUAL words
-- Never prescribe action. The mirror shows, the user decides.
+- Never prescribe action. The morph shows, the user decides.
 - Return ONLY JSON. No markdown. No wrapping.`;
 
 export async function POST(req: NextRequest) {
@@ -137,7 +137,7 @@ export async function POST(req: NextRequest) {
 
     if (!response.ok) {
       console.error("Anthropic API error:", response.status);
-      return NextResponse.json({ error: "Mirror unavailable" }, { status: 502 });
+      return NextResponse.json({ error: "DailyMorph unavailable" }, { status: 502 });
     }
 
     const data = await response.json();

@@ -1,4 +1,4 @@
-# The Mirror
+# DailyMorph
 
 See yourself. Find the switch. Act.
 
@@ -13,11 +13,11 @@ A living equation that reads your state from your writing and shows you what's u
 - **NTR** (New Transmission Richness) — complexity of what you're processing
 - **ΔI** — your accessible potential right now
 
-Your creature mirrors your equation. Write honestly, and watch it evolve.
+Your creature mirrors your equation. Write honestly, and watch it morph.
 
 ## Stack
 
-- Next.js 15 (App Router)
+- Next.js 16 (App Router)
 - Neon Postgres (serverless)
 - NextAuth.js (authentication)
 - Tailwind CSS 4
