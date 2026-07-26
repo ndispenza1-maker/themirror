@@ -25,6 +25,7 @@ export default function Home() {
   const [extraInfo, setExtraInfo] = useState("");
   const [extraInfoSaved, setExtraInfoSaved] = useState(false);
   const [extraInfoSaving, setExtraInfoSaving] = useState(false);
+  const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/tos")
@@ -64,8 +65,18 @@ export default function Home() {
         if (data.generated && data.image) {
           setCharacterImage(data.image);
         } else if (!data.generated) {
-          // No cached image — trigger generation
           generateCharacter();
+        }
+      })
+      .catch(() => {});
+
+    fetch("/api/character/background")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.generated && data.image) {
+          setBackgroundImage(data.image);
+        } else if (!data.generated) {
+          generateBackground();
         }
       })
       .catch(() => {});
@@ -82,6 +93,16 @@ export default function Home() {
     } finally {
       setCharacterLoading(false);
     }
+  }
+
+  async function generateBackground() {
+    try {
+      const res = await fetch("/api/character/background", { method: "POST" });
+      const data = await res.json();
+      if (res.ok && data.image) {
+        setBackgroundImage(data.image);
+      }
+    } catch {} // silent fail — background is non-blocking
   }
 
   async function handleProfileComplete(data: StartingProfileData) {
@@ -133,11 +154,22 @@ export default function Home() {
     <main className="min-h-screen bg-[var(--background)] px-4 py-4 md:px-6 md:py-6">
       <div className="mx-auto flex min-h-[calc(100vh-2rem)] w-full max-w-6xl flex-col gap-4 md:min-h-[calc(100vh-3rem)]">
         <section className="relative flex-[7] overflow-hidden rounded-3xl border border-[var(--border)] bg-[linear-gradient(180deg,#13131a_0%,#0d0d12_45%,#09090c_100%)] shadow-[0_0_0_1px_rgba(255,255,255,0.02),0_20px_60px_rgba(0,0,0,0.35)]">
-          <div className="absolute inset-0">
-            <div className="absolute inset-x-0 top-0 h-[48%] bg-[radial-gradient(circle_at_top,rgba(167,139,250,0.18),transparent_55%)]" />
-            <div className="absolute left-[8%] top-[14%] h-24 w-24 rounded-full bg-[rgba(255,244,190,0.08)] blur-2xl" />
-            <div className="absolute right-[12%] top-[18%] h-32 w-32 rounded-full bg-[rgba(167,139,250,0.10)] blur-3xl" />
-          </div>
+          {/* Background image - full bleed */}
+          {backgroundImage && (
+            <img
+              src={backgroundImage}
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          )}
+
+          {!backgroundImage && (
+            <div className="absolute inset-0">
+              <div className="absolute inset-x-0 top-0 h-[48%] bg-[radial-gradient(circle_at_top,rgba(167,139,250,0.18),transparent_55%)]" />
+              <div className="absolute left-[8%] top-[14%] h-24 w-24 rounded-full bg-[rgba(255,244,190,0.08)] blur-2xl" />
+              <div className="absolute right-[12%] top-[18%] h-32 w-32 rounded-full bg-[rgba(167,139,250,0.10)] blur-3xl" />
+            </div>
+          )}
 
           <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between p-4 md:p-6">
             <div>
@@ -153,17 +185,7 @@ export default function Home() {
 
           <div className="absolute inset-0">
             <div className="relative h-full w-full overflow-hidden">
-              {/* Background environment - fills entire display */}
-              <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_0%,rgba(167,139,250,0.06)_60%,rgba(20,20,28,0.62)_85%)]" />
-              <div className="absolute bottom-[18%] left-[-10%] h-36 w-[45%] rounded-[50%] bg-[rgba(88,88,112,0.28)] blur-[1px]" />
-              <div className="absolute bottom-[16%] left-[22%] h-40 w-[38%] rounded-[50%] bg-[rgba(76,76,98,0.32)] blur-[1px]" />
-              <div className="absolute bottom-[17%] right-[-6%] h-44 w-[42%] rounded-[50%] bg-[rgba(64,64,84,0.32)] blur-[1px]" />
-              <div className="absolute bottom-[10%] left-0 right-0 h-24 bg-[rgba(20,20,28,0.62)]" />
-              <div className="absolute bottom-[12%] left-[8%] h-20 w-6 rounded-t-full bg-[rgba(31,31,40,0.85)]" />
-              <div className="absolute bottom-[12%] left-[12%] h-14 w-14 rounded-full bg-[rgba(31,31,40,0.85)]" />
-              <div className="absolute bottom-[11%] right-[16%] h-20 w-7 rounded-t-full bg-[rgba(31,31,40,0.85)]" />
-              <div className="absolute bottom-[11%] right-[11%] h-16 w-16 rounded-full bg-[rgba(31,31,40,0.85)]" />
-
+              {/* Character card centered */}
               <div className="absolute bottom-[13%] left-1/2 z-20 flex -translate-x-1/2 flex-col items-center gap-3">
                 <div className="relative flex h-[280px] w-[210px] items-center justify-center overflow-hidden rounded-[28px] border border-[rgba(255,255,255,0.10)] bg-[rgba(17,17,20,0.55)] shadow-[0_18px_40px_rgba(0,0,0,0.35)] backdrop-blur md:h-[340px] md:w-[250px]">
                   {characterImage ? (
