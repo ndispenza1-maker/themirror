@@ -84,7 +84,8 @@ export async function POST() {
       n: 1,
       size: "1536x1024",
       background: "opaque",
-      output_format: "png",
+      output_format: "jpeg",
+      quality: "medium",
     });
 
     const imageBase64 = response.data?.[0]?.b64_json;
@@ -93,7 +94,7 @@ export async function POST() {
       throw new Error("No image data returned from OpenAI");
     }
 
-    const imageUrl = `data:image/png;base64,${imageBase64}`;
+    const imageUrl = `data:image/jpeg;base64,${imageBase64}`;
 
     await sql`
       UPDATE mirror_starting_profiles
