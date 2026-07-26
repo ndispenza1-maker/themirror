@@ -3,12 +3,12 @@
 import { useEffect, useState } from "react";
 import { signOut } from "next-auth/react";
 import TosGate from "@/components/TosGate";
-import StartingProfile from "@/components/StartingProfile";
 
-interface StartingProfileData {
-  sex: "male" | "female" | null;
-  creature: "deer" | "snake" | "dog" | null;
-  age: string;
+type Creature = "deer" | "snake" | "dog";
+type GamePhase = "loading" | "tos" | "choose" | "fuel" | "ready" | "play";
+
+interface ProfileData {
+  creature: Creature;
   occupation: string;
   hobbies: string;
   consistentWork: string;
@@ -16,275 +16,344 @@ interface StartingProfileData {
 }
 
 export default function Home() {
-  const [tosAccepted, setTosAccepted] = useState<boolean | null>(null);
-  const [profileCompleted, setProfileCompleted] = useState<boolean | null>(null);
-  const [profilePreview, setProfilePreview] = useState<StartingProfileData | null>(null);
-  const [characterLoading, setCharacterLoading] = useState(false);
-  const [profileExpanded, setProfileExpanded] = useState(false);
-  const [extraInfoExpanded, setExtraInfoExpanded] = useState(false);
-  const [extraInfo, setExtraInfo] = useState("");
-  const [extraInfoSaved, setExtraInfoSaved] = useState(false);
-  const [extraInfoSaving, setExtraInfoSaving] = useState(false);
+  const [phase, setPhase] = useState<GamePhase>("loading");
+  const [creature, setCreature] = useState<Creature | null>(null);
+  const [fuelStep, setFuelStep] = useState(0);
+  const [occupation, setOccupation] = useState("");
+  const [hobbies, setHobbies] = useState("");
+  const [consistentWork, setConsistentWork] = useState("");
+  const [consistentPersonal, setConsistentPersonal] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [diaryOpen, setDiaryOpen] = useState(false);
+  const [diaryText, setDiaryText] = useState("");
+  const [deltaI, setDeltaI] = useState(0);
 
-
+  // Boot: check TOS + profile state
   useEffect(() => {
-    fetch("/api/tos")
-      .then((r) => r.json())
-      .then((data) => setTosAccepted(data.accepted ?? false))
-      .catch(() => setTosAccepted(false));
+    async function boot() {
+      try {
+        const tosRes = await fetch("/api/tos");
+        const tosData = await tosRes.json();
+        if (!tosData.accepted) {
+          setPhase("tos");
+          return;
+        }
+
+        const profileRes = await fetch("/api/profile");
+        const profileData = await profileRes.json();
+        if (profileData.completed && profileData.profile) {
+          setCreature(profileData.profile.creature);
+          setOccupation(profileData.profile.occupation || "");
+          setHobbies(profileData.profile.hobbies || "");
+          setConsistentWork(profileData.profile.consistent_work || "");
+          setConsistentPersonal(profileData.profile.consistent_personal || "");
+          setPhase("ready");
+        } else {
+          setPhase("choose");
+        }
+      } catch {
+        setPhase("tos");
+      }
+    }
+    boot();
   }, []);
 
-  useEffect(() => {
-    if (!tosAccepted) return;
-
-    fetch("/api/profile")
-      .then((r) => r.json())
-      .then((data) => {
-        setProfileCompleted(data.completed ?? false);
-        if (data.profile) {
-          setProfilePreview({
-            sex: data.profile.sex,
-            creature: data.profile.creature,
-            age: String(data.profile.age),
-            occupation: data.profile.occupation,
-            hobbies: data.profile.hobbies,
-            consistentWork: data.profile.consistent_work,
-            consistentPersonal: data.profile.consistent_personal,
-          });
-        }
-      })
-      .catch(() => setProfileCompleted(false));
-  }, [tosAccepted]);
-
-
-
-  async function handleProfileComplete(data: StartingProfileData) {
-    const res = await fetch("/api/profile", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-
-    if (!res.ok) return;
-
-    setProfilePreview(data);
-    setProfileCompleted(true);
-
-
+  async function saveProfile() {
+    setSaving(true);
+    try {
+      const res = await fetch("/api/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          creature,
+          occupation: occupation.trim(),
+          hobbies: hobbies.trim(),
+          consistentWork: consistentWork.trim(),
+          consistentPersonal: consistentPersonal.trim(),
+        }),
+      });
+      if (res.ok) {
+        setPhase("ready");
+      }
+    } finally {
+      setSaving(false);
+    }
   }
 
-  if (tosAccepted === null) {
+  // TOS
+  if (phase === "loading") {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-[var(--background)]">
-        <p className="text-sm text-[var(--muted)]">Loading...</p>
+      <main className="fixed inset-0 flex items-center justify-center bg-[#0a0a0f]">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-white/80" />
       </main>
     );
   }
 
-  if (!tosAccepted) {
-    return <TosGate onAccept={() => setTosAccepted(true)} />;
+  if (phase === "tos") {
+    return <TosGate onAccept={() => setPhase("choose")} />;
   }
-
-  if (profileCompleted === null) {
-    return (
-      <main className="min-h-screen flex items-center justify-center bg-[var(--background)]">
-        <p className="text-sm text-[var(--muted)]">Preparing your starting profile...</p>
-      </main>
-    );
-  }
-
 
   return (
-    <main className="min-h-screen bg-[var(--background)] px-4 py-4 md:px-6 md:py-6">
-      <div className="mx-auto flex min-h-[calc(100vh-2rem)] w-full max-w-6xl flex-col gap-4 md:min-h-[calc(100vh-3rem)]">
-        <section className="relative flex-[7] overflow-hidden rounded-3xl border border-[var(--border)] bg-[linear-gradient(180deg,#13131a_0%,#0d0d12_45%,#09090c_100%)] shadow-[0_0_0_1px_rgba(255,255,255,0.02),0_20px_60px_rgba(0,0,0,0.35)]">
-          {/* Background image - static duality scene */}
-          <img
-            src="/assets/background-duality.jpg"
-            alt=""
-            className="absolute inset-0 h-full w-full object-cover"
-          />
+    <main className="fixed inset-0 overflow-hidden bg-[#0a0a0f]">
+      {/* Background — always visible */}
+      <img
+        src="/assets/background-duality.jpg"
+        alt=""
+        className="absolute inset-0 h-full w-full object-cover"
+      />
 
-          <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between p-4 md:p-6">
-            <div>
-              <p className="text-[10px] uppercase tracking-[0.28em] text-[var(--muted)]">DailyMorph</p>
-              <h1 className="mt-1 text-lg font-semibold text-[var(--foreground)] md:text-xl">
-                {profileCompleted ? "Starting Profile" : "Character Build"}
-              </h1>
-            </div>
-            <div className="rounded-full border border-[var(--border)] bg-[rgba(17,17,20,0.75)] px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-[var(--muted)] backdrop-blur">
-              Live Preview
+      {/* Dark overlay for readability */}
+      <div className="absolute inset-0 bg-black/30" />
+
+      {/* Creature on background — visible after selection */}
+      {creature && phase !== "choose" && (
+        <img
+          src={`/assets/creature-${creature}.png`}
+          alt={creature}
+          className={`absolute bottom-[8%] left-1/2 z-10 w-auto -translate-x-1/2 object-contain drop-shadow-[0_8px_32px_rgba(0,0,0,0.8)] transition-all duration-700 ${
+            phase === "ready" || phase === "play" ? "h-[55%]" : "h-[40%] opacity-70"
+          }`}
+        />
+      )}
+
+      {/* HUD — top bar */}
+      <div className="absolute inset-x-0 top-0 z-30 flex items-center justify-between p-4">
+        <div className="rounded-full border border-white/10 bg-black/50 px-4 py-1.5 backdrop-blur">
+          <span className="text-[11px] font-medium tracking-wider text-white/70">DailyMorph</span>
+        </div>
+        {phase === "ready" && (
+          <div className="flex items-center gap-3">
+            <div className="rounded-full border border-white/10 bg-black/50 px-4 py-1.5 backdrop-blur">
+              <span className="text-[11px] tracking-wider text-white/50">ΔI: </span>
+              <span className="text-[11px] font-bold text-white">{deltaI}</span>
             </div>
           </div>
-
-          {/* Character creature on the background */}
-          <div className="absolute inset-0">
-            <div className="relative h-full w-full overflow-hidden">
-              {profilePreview?.creature && (
-                <img
-                  src={`/assets/creature-${profilePreview.creature}.png`}
-                  alt={profilePreview.creature}
-                  className="absolute bottom-[5%] left-1/2 z-20 h-[65%] w-auto -translate-x-1/2 object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.6)]"
-                />
-              )}
-            </div>
-          </div>
-        </section>
-
-        <section className="flex-[3] rounded-3xl border border-[var(--border)] bg-[var(--surface)] px-4 py-4 shadow-[0_12px_40px_rgba(0,0,0,0.25)] md:px-6 md:py-5">
-          {!profileCompleted ? (
-            <StartingProfile onComplete={handleProfileComplete} />
-          ) : (
-            <div className="flex h-full flex-col gap-4">
-              <button
-                onClick={() => setProfileExpanded(!profileExpanded)}
-                className="flex items-center justify-between w-full"
-              >
-                <div className="text-left">
-                  <p className="text-[10px] uppercase tracking-[0.28em] text-[var(--muted)]">Starting Profile</p>
-                  <h2 className="mt-1 text-lg font-semibold text-[var(--foreground)]">Foundation set</h2>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="rounded-full border border-[var(--border)] px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-[var(--muted)]">
-                    Ready for next layer
-                  </div>
-                  <svg
-                    className={`w-5 h-5 text-[var(--muted)] transition-transform duration-200 ${profileExpanded ? "rotate-180" : ""}`}
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                  </svg>
-                </div>
-              </button>
-
-              {profileExpanded && (
-                <div className="space-y-3 animate-[fadeIn_0.2s_ease-out]">
-                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-light)]/40 p-4">
-                      <p className="text-[10px] uppercase tracking-[0.18em] text-[var(--muted)]">Sex</p>
-                      <p className="mt-2 text-sm text-[var(--foreground)] capitalize">{profilePreview?.sex}</p>
-                    </div>
-                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-light)]/40 p-4">
-                      <p className="text-[10px] uppercase tracking-[0.18em] text-[var(--muted)]">Creature</p>
-                      <div className="mt-2 flex items-center gap-2">
-                        {profilePreview?.creature && (
-                          <img
-                            src={`/assets/creature-${profilePreview.creature}.png`}
-                            alt={profilePreview.creature}
-                            className="h-8 w-8 object-contain"
-                          />
-                        )}
-                        <p className="text-sm text-[var(--foreground)] capitalize">
-                          {profilePreview?.creature === "deer" ? "Deer (Fear)" : profilePreview?.creature === "snake" ? "Snake (Hunger)" : profilePreview?.creature === "dog" ? "Dog (Love)" : ""}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-light)]/40 p-4">
-                      <p className="text-[10px] uppercase tracking-[0.18em] text-[var(--muted)]">Age</p>
-                      <p className="mt-2 text-sm text-[var(--foreground)]">{profilePreview?.age}</p>
-                    </div>
-                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-light)]/40 p-4">
-                      <p className="text-[10px] uppercase tracking-[0.18em] text-[var(--muted)]">Occupation</p>
-                      <p className="mt-2 text-sm text-[var(--foreground)]">{profilePreview?.occupation}</p>
-                    </div>
-                  </div>
-
-                  <div className="grid gap-3 md:grid-cols-3">
-                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-light)]/40 p-4 md:col-span-1">
-                      <p className="text-[10px] uppercase tracking-[0.18em] text-[var(--muted)]">Hobbies</p>
-                      <p className="mt-2 text-sm text-[var(--foreground)]">{profilePreview?.hobbies}</p>
-                    </div>
-                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-light)]/40 p-4 md:col-span-1">
-                      <p className="text-[10px] uppercase tracking-[0.18em] text-[var(--muted)]">Most consistent at work</p>
-                      <p className="mt-2 text-sm text-[var(--foreground)]">{profilePreview?.consistentWork}</p>
-                    </div>
-                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-light)]/40 p-4 md:col-span-1">
-                      <p className="text-[10px] uppercase tracking-[0.18em] text-[var(--muted)]">Most consistent personally</p>
-                      <p className="mt-2 text-sm text-[var(--foreground)]">{profilePreview?.consistentPersonal}</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Extra Info dropdown */}
-              <button
-                onClick={() => setExtraInfoExpanded(!extraInfoExpanded)}
-                className="flex items-center justify-between w-full mt-2"
-              >
-                <div className="text-left">
-                  <p className="text-[10px] uppercase tracking-[0.28em] text-[var(--muted)]">Extra Info</p>
-                  <p className="mt-1 text-sm text-[var(--muted)]">
-                    {extraInfoSaved ? "Additional context saved" : "Add more context for the equation"}
-                  </p>
-                </div>
-                <svg
-                  className={`w-5 h-5 text-[var(--muted)] transition-transform duration-200 ${extraInfoExpanded ? "rotate-180" : ""}`}
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-
-              {extraInfoExpanded && (
-                <div className="space-y-3 animate-[fadeIn_0.2s_ease-out]">
-                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-light)]/50 p-4">
-                    <p className="text-[10px] uppercase tracking-[0.18em] text-[var(--muted)] mb-2">Anything else that shapes how you process the world?</p>
-                    <p className="text-[11px] text-[var(--muted)]/70 mb-3">Past experience, skills, challenges, things you keep coming back to. This feeds into how the equation reads your existing information.</p>
-                    <textarea
-                      value={extraInfo}
-                      onChange={(e) => {
-                        setExtraInfo(e.target.value);
-                        setExtraInfoSaved(false);
-                      }}
-                      placeholder="Anything that helps paint the full picture..."
-                      maxLength={2000}
-                      rows={4}
-                      className="w-full rounded-xl border border-[var(--border)] bg-[rgba(255,255,255,0.02)] px-3 py-2.5 text-sm text-[var(--foreground)] placeholder:text-[var(--muted)]/40 focus:border-[var(--accent)]/50 focus:outline-none transition-colors resize-none"
-                    />
-                    <div className="flex items-center justify-between mt-3">
-                      <p className="text-[10px] text-[var(--muted)]">{extraInfo.length}/2000</p>
-                      <button
-                        onClick={async () => {
-                          if (!extraInfo.trim()) return;
-                          setExtraInfoSaving(true);
-                          try {
-                            const res = await fetch("/api/profile/extra", {
-                              method: "POST",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({ extraInfo: extraInfo.trim() }),
-                            });
-                            if (res.ok) setExtraInfoSaved(true);
-                          } finally {
-                            setExtraInfoSaving(false);
-                          }
-                        }}
-                        disabled={extraInfoSaving || !extraInfo.trim()}
-                        className="rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--background)] hover:bg-[var(--accent-dim)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                      >
-                        {extraInfoSaving ? "Saving..." : extraInfoSaved ? "Saved ✓" : "Save"}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </section>
+        )}
+        <button
+          onClick={() => signOut({ callbackUrl: "/login" })}
+          className="rounded-full border border-white/10 bg-black/50 px-3 py-1.5 text-[11px] text-white/50 backdrop-blur hover:text-white/80 transition-colors"
+        >
+          ✕
+        </button>
       </div>
 
-      {/* Logout button */}
-      <button
-        onClick={() => signOut({ callbackUrl: "/login" })}
-        className="absolute top-4 right-4 z-50 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-[11px] text-[var(--muted)] hover:text-[var(--foreground)] hover:border-[var(--accent)]/40 transition-colors"
-      >
-        Log out
-      </button>
+      {/* PHASE: Choose creature */}
+      {phase === "choose" && (
+        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center p-6">
+          <div className="mb-8 text-center">
+            <h1 className="text-2xl font-bold text-white md:text-3xl">Which one are you?</h1>
+            <p className="mt-2 text-sm text-white/50">Right now. Not who you want to be. Who you are.</p>
+          </div>
+
+          <div className="flex gap-6 md:gap-10">
+            {(["deer", "snake", "dog"] as const).map((c) => (
+              <button
+                key={c}
+                onClick={() => {
+                  setCreature(c);
+                  setPhase("fuel");
+                  setFuelStep(0);
+                }}
+                className={`group flex flex-col items-center gap-3 rounded-2xl border p-4 transition-all duration-300 hover:scale-105 ${
+                  creature === c
+                    ? "border-white/40 bg-white/10 scale-105"
+                    : "border-white/10 bg-black/30 hover:border-white/25 hover:bg-white/5"
+                }`}
+              >
+                <img
+                  src={`/assets/creature-${c}.png`}
+                  alt={c}
+                  className="h-24 w-24 object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.6)] md:h-32 md:w-32"
+                />
+                <span className="text-xs font-medium uppercase tracking-widest text-white/60 group-hover:text-white/90">
+                  {c === "deer" ? "The Deer" : c === "snake" ? "The Snake" : "The Dog"}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* PHASE: Fuel (EI gathering) */}
+      {phase === "fuel" && (
+        <div className="absolute inset-x-0 bottom-0 z-20 flex justify-center p-6">
+          <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-black/70 p-6 backdrop-blur-lg">
+            {fuelStep === 0 && (
+              <div className="space-y-4">
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-white/40">Loading EI — Step 1 of 3</p>
+                  <h2 className="mt-2 text-lg font-semibold text-white">What have you been training?</h2>
+                  <p className="mt-1 text-sm text-white/40">Your creature inherits your experience.</p>
+                </div>
+                <input
+                  type="text"
+                  value={occupation}
+                  onChange={(e) => setOccupation(e.target.value)}
+                  placeholder="What you do for work..."
+                  maxLength={120}
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/25 focus:border-white/30 focus:outline-none transition-colors"
+                  autoFocus
+                />
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => setFuelStep(1)}
+                    disabled={!occupation.trim()}
+                    className="rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-black hover:bg-white/90 transition-colors disabled:opacity-20"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {fuelStep === 1 && (
+              <div className="space-y-4">
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-white/40">Loading EI — Step 2 of 3</p>
+                  <h2 className="mt-2 text-lg font-semibold text-white">What else do you carry?</h2>
+                  <p className="mt-1 text-sm text-white/40">Bonus XP. Everything outside of work that built you.</p>
+                </div>
+                <input
+                  type="text"
+                  value={hobbies}
+                  onChange={(e) => setHobbies(e.target.value)}
+                  placeholder="Hobbies, skills, interests..."
+                  maxLength={200}
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/25 focus:border-white/30 focus:outline-none transition-colors"
+                  autoFocus
+                />
+                <div className="flex justify-between">
+                  <button
+                    onClick={() => setFuelStep(0)}
+                    className="rounded-xl border border-white/10 px-4 py-2.5 text-sm text-white/50 hover:text-white/80 transition-colors"
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={() => setFuelStep(2)}
+                    disabled={!hobbies.trim()}
+                    className="rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-black hover:bg-white/90 transition-colors disabled:opacity-20"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {fuelStep === 2 && (
+              <div className="space-y-4">
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-white/40">Loading EI — Step 3 of 3</p>
+                  <h2 className="mt-2 text-lg font-semibold text-white">What do you always return to?</h2>
+                  <p className="mt-1 text-sm text-white/40">The pattern that&apos;s load-bearing. Work and personal.</p>
+                </div>
+                <input
+                  type="text"
+                  value={consistentWork}
+                  onChange={(e) => setConsistentWork(e.target.value)}
+                  placeholder="At work, you always come back to..."
+                  maxLength={200}
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/25 focus:border-white/30 focus:outline-none transition-colors"
+                  autoFocus
+                />
+                <input
+                  type="text"
+                  value={consistentPersonal}
+                  onChange={(e) => setConsistentPersonal(e.target.value)}
+                  placeholder="Personally, you always come back to..."
+                  maxLength={200}
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/25 focus:border-white/30 focus:outline-none transition-colors"
+                />
+                <div className="flex justify-between">
+                  <button
+                    onClick={() => setFuelStep(1)}
+                    className="rounded-xl border border-white/10 px-4 py-2.5 text-sm text-white/50 hover:text-white/80 transition-colors"
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={saveProfile}
+                    disabled={!consistentWork.trim() || !consistentPersonal.trim() || saving}
+                    className="rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-black hover:bg-white/90 transition-colors disabled:opacity-20"
+                  >
+                    {saving ? "Building..." : "Spawn creature"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* PHASE: Ready — creature spawned, waiting for first entry */}
+      {phase === "ready" && !diaryOpen && (
+        <div className="absolute inset-x-0 bottom-0 z-20 flex justify-center p-6">
+          <div className="flex flex-col items-center gap-4">
+            <div className="rounded-full border border-white/10 bg-black/50 px-5 py-2 backdrop-blur">
+              <span className="text-xs text-white/50">
+                {deltaI === 0 ? "ΔI: 0 — Write your first entry to begin" : `Tier: Animal • ΔI: ${deltaI}`}
+              </span>
+            </div>
+            <button
+              onClick={() => setDiaryOpen(true)}
+              className="rounded-2xl border border-white/20 bg-white/10 px-8 py-4 text-sm font-semibold text-white backdrop-blur hover:bg-white/15 hover:border-white/30 transition-all"
+            >
+              ✍️ Write Entry
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Diary input overlay */}
+      {diaryOpen && (
+        <div className="absolute inset-0 z-30 flex items-end justify-center p-4 md:items-center">
+          <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-[#0d0d12]/95 p-6 backdrop-blur-xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-white">Daily Entry</h2>
+              <button
+                onClick={() => setDiaryOpen(false)}
+                className="text-white/40 hover:text-white/80 transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+            <p className="mb-4 text-sm text-white/40">
+              What happened today? What are you thinking about? Write raw — the equation reads between the lines.
+            </p>
+            <textarea
+              value={diaryText}
+              onChange={(e) => setDiaryText(e.target.value)}
+              placeholder="Start writing..."
+              maxLength={5000}
+              rows={6}
+              className="w-full resize-none rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/25 focus:border-white/30 focus:outline-none transition-colors"
+              autoFocus
+            />
+            <div className="mt-4 flex items-center justify-between">
+              <span className="text-[11px] text-white/30">{diaryText.length}/5000</span>
+              <button
+                disabled={diaryText.trim().length < 10}
+                onClick={async () => {
+                  const res = await fetch("/api/diary", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ content: diaryText.trim() }),
+                  });
+                  if (res.ok) {
+                    const data = await res.json();
+                    setDeltaI(data.deltaI || 0);
+                    setDiaryText("");
+                    setDiaryOpen(false);
+                  }
+                }}
+                className="rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-black hover:bg-white/90 transition-colors disabled:opacity-20"
+              >
+                Submit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

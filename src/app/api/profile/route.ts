@@ -38,24 +38,15 @@ export async function POST(req: Request) {
   const email = session.user.email.toLowerCase().trim();
 
   const body = await req.json();
-  const { sex, creature, age, occupation, hobbies, consistentWork, consistentPersonal } = body;
+  const { creature, occupation, hobbies, consistentWork, consistentPersonal } = body;
 
   // Validation
-  if (!sex || !creature || !age || !occupation || !hobbies || !consistentWork || !consistentPersonal) {
+  if (!creature || !occupation || !hobbies || !consistentWork || !consistentPersonal) {
     return NextResponse.json({ error: "All fields are required" }, { status: 400 });
-  }
-
-  if (!["male", "female"].includes(sex)) {
-    return NextResponse.json({ error: "Invalid sex value" }, { status: 400 });
   }
 
   if (!["deer", "snake", "dog"].includes(creature)) {
     return NextResponse.json({ error: "Invalid creature value" }, { status: 400 });
-  }
-
-  const ageNum = parseInt(age, 10);
-  if (isNaN(ageNum) || ageNum < 18 || ageNum > 120) {
-    return NextResponse.json({ error: "Age must be between 18 and 120" }, { status: 400 });
   }
 
   // Get user ID
@@ -67,12 +58,10 @@ export async function POST(req: Request) {
 
   // Upsert starting profile
   await sql`
-    INSERT INTO mirror_starting_profiles (user_id, sex, creature, age, occupation, hobbies, consistent_work, consistent_personal)
-    VALUES (${userId}, ${sex}, ${creature}, ${ageNum}, ${occupation.trim().slice(0, 120)}, ${hobbies.trim().slice(0, 200)}, ${consistentWork.trim().slice(0, 200)}, ${consistentPersonal.trim().slice(0, 200)})
+    INSERT INTO mirror_starting_profiles (user_id, creature, occupation, hobbies, consistent_work, consistent_personal)
+    VALUES (${userId}, ${creature}, ${occupation.trim().slice(0, 120)}, ${hobbies.trim().slice(0, 200)}, ${consistentWork.trim().slice(0, 200)}, ${consistentPersonal.trim().slice(0, 200)})
     ON CONFLICT (user_id) DO UPDATE SET
-      sex = EXCLUDED.sex,
       creature = EXCLUDED.creature,
-      age = EXCLUDED.age,
       occupation = EXCLUDED.occupation,
       hobbies = EXCLUDED.hobbies,
       consistent_work = EXCLUDED.consistent_work,
