@@ -185,42 +185,31 @@ export default function Home() {
 
           <div className="absolute inset-0">
             <div className="relative h-full w-full overflow-hidden">
-              {/* Character card centered */}
-              <div className="absolute bottom-[13%] left-1/2 z-20 flex -translate-x-1/2 flex-col items-center gap-3">
-                <div className="relative flex h-[280px] w-[210px] items-center justify-center overflow-hidden rounded-[28px] border border-[rgba(255,255,255,0.10)] bg-[rgba(17,17,20,0.55)] shadow-[0_18px_40px_rgba(0,0,0,0.35)] backdrop-blur md:h-[340px] md:w-[250px]">
-                  {characterImage ? (
-                    <img
-                      src={characterImage}
-                      alt="Starter character"
-                      className="h-full w-full object-cover"
-                    />
-                  ) : characterLoading ? (
-                    <div className="flex flex-col items-center gap-3 text-center">
-                      <div className="h-10 w-10 animate-spin rounded-full border-2 border-[var(--border)] border-t-[var(--accent)]" />
-                      <p className="text-sm text-[var(--muted)]">Generating starter form...</p>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center gap-3 text-center px-6">
-                      <div className="h-20 w-20 rounded-full border border-[rgba(255,255,255,0.10)] bg-[rgba(232,232,237,0.08)]" />
-                      <p className="text-sm text-[var(--muted)]">Your character will appear here.</p>
-                      {profileCompleted && (
-                        <button
-                          onClick={generateCharacter}
-                          className="rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--background)] hover:bg-[var(--accent-dim)] transition-colors"
-                        >
-                          Generate starter form
-                        </button>
-                      )}
-                    </div>
-                  )}
+              {/* Character placed directly on the background floor */}
+              {characterImage && (
+                <img
+                  src={characterImage}
+                  alt="Your character"
+                  className="absolute bottom-[5%] left-1/2 z-20 h-[75%] w-auto -translate-x-1/2 object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.6)]"
+                />
+              )}
+              {!characterImage && characterLoading && (
+                <div className="absolute bottom-[30%] left-1/2 z-20 flex -translate-x-1/2 flex-col items-center gap-3">
+                  <div className="h-10 w-10 animate-spin rounded-full border-2 border-[var(--border)] border-t-[var(--accent)]" />
+                  <p className="text-sm text-[var(--muted)]">Generating starter form...</p>
                 </div>
-                <div className="rounded-full border border-[var(--border)] bg-[rgba(17,17,20,0.78)] px-3 py-1 text-[11px] text-[var(--muted)] backdrop-blur">
-                  {characterImage ? "Starter form generated" : profileCompleted ? "Starter form ready to generate" : "Starter form preview"}
+              )}
+              {!characterImage && !characterLoading && profileCompleted && (
+                <div className="absolute bottom-[30%] left-1/2 z-20 flex -translate-x-1/2 flex-col items-center gap-3">
+                  <button
+                    onClick={generateCharacter}
+                    className="rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--background)] hover:bg-[var(--accent-dim)] transition-colors"
+                  >
+                    Generate starter form
+                  </button>
                 </div>
-              </div>
+              )}
             </div>
-
-
           </div>
         </section>
 

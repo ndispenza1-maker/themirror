@@ -77,6 +77,7 @@ export async function POST() {
   try {
     const prompt = buildPrompt(profile);
 
+    // Step 1: Generate character image
     const result = await fal.subscribe("fal-ai/flux/dev", {
       input: {
         prompt,
@@ -87,23 +88,39 @@ export async function POST() {
       },
     });
 
-    const imageUrl = result.data?.images?.[0]?.url;
+    const rawImageUrl = result.data?.images?.[0]?.url;
 
-    if (!imageUrl) {
+    if (!rawImageUrl) {
       throw new Error("No image URL returned from fal.ai");
     }
 
-    // Store the fal.ai CDN URL directly
+    // Step 2: Remove background to get transparent PNG cutout
+    const bgRemoval = await fal.subscribe("fal-ai/birefnet/v2", {
+      input: {
+        image_url: rawImageUrl,
+        model: "General Use (Light)",
+        operating_resolution: "1024x1024",
+        output_format: "png",
+      },
+    });
+
+    const cutoutUrl = bgRemoval.data?.image?.url;
+
+    if (!cutoutUrl) {
+      throw new Error("Background removal failed");
+    }
+
+    // Store the transparent cutout URL
     await sql`
       UPDATE mirror_starting_profiles
-      SET character_image = ${imageUrl},
+      SET character_image = ${cutoutUrl},
           updated_at = NOW()
       WHERE user_id = ${profile.user_id}
     `;
 
     return NextResponse.json({
       generated: true,
-      image: imageUrl,
+      image: cutoutUrl,
       cached: false,
     });
   } catch (err) {
