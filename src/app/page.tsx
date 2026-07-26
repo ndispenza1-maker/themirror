@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { signOut } from "next-auth/react";
 import TosGate from "@/components/TosGate";
 import StartingProfile from "@/components/StartingProfile";
 
@@ -348,6 +349,14 @@ export default function Home() {
           )}
         </section>
       </div>
+
+      {/* Logout button */}
+      <button
+        onClick={() => signOut({ callbackUrl: "/login" })}
+        className="absolute top-4 right-4 z-50 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-[11px] text-[var(--muted)] hover:text-[var(--foreground)] hover:border-[var(--accent)]/40 transition-colors"
+      >
+        Log out
+      </button>
     </main>
   );
 }
