@@ -128,7 +128,6 @@ export default function Home() {
     );
   }
 
-  const currentConsistency = profilePreview?.consistentPersonal ?? "Waiting for initial inputs";
 
   return (
     <main className="min-h-screen bg-[var(--background)] px-4 py-4 md:px-6 md:py-6">
