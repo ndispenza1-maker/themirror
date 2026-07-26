@@ -3,7 +3,6 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { getSQL } from "@/lib/db";
 import OpenAI from "openai";
-import { put } from "@vercel/blob";
 
 function getOpenAI() {
   return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -61,11 +60,6 @@ export async function POST() {
     user_id: string;
     sex: string;
     age: number;
-    occupation: string;
-    hobbies: string;
-    relationship_status: string;
-    consistent_work: string;
-    consistent_personal: string;
     character_image: string | null;
   };
 
@@ -79,7 +73,6 @@ export async function POST() {
 
   try {
     const prompt = buildPrompt(profile);
-
     const openai = getOpenAI();
 
     // Single call: generate character with transparent background
@@ -98,16 +91,8 @@ export async function POST() {
       throw new Error("No image data returned from OpenAI");
     }
 
-    // Upload to Vercel Blob for permanent storage
-    const buffer = Buffer.from(imageBase64, "base64");
-    const blob = await put(`characters/${profile.user_id}.png`, buffer, {
-      access: "public",
-      contentType: "image/png",
-    });
+    const imageUrl = `data:image/png;base64,${imageBase64}`;
 
-    const imageUrl = blob.url;
-
-    // Store the permanent blob URL
     await sql`
       UPDATE mirror_starting_profiles
       SET character_image = ${imageUrl},
@@ -134,5 +119,7 @@ function buildPrompt(profile: {
 
   return `Full-body character portrait, Fortnite art style. ${sexLabel} human, age ${profile.age}, standing in a neutral relaxed pose facing forward. Clean simple outfit — work pants, plain t-shirt, sturdy boots. Nothing flashy. Expression: calm, present, aware. No weapons, no armor, no special effects, no glow. This is a starter form — a human at the beginning of their journey.
 
-Semi-stylized 3D render quality like Fortnite or Pixar. Dramatic cinematic lighting from above and slightly in front. Dark moody tones with subtle warm color accents on the character. Full body visible head to toe, feet touching ground. No text, no UI elements, no watermarks, no logos. Character centered in frame with space around all edges.`;
+Background: solid neutral gray (#505050), flat, no environment, no objects, no gradients. Just the character on a plain gray backdrop.
+
+Art direction: Semi-stylized 3D render quality like Fortnite or Pixar. Dramatic cinematic lighting from above and slightly in front. Dark moody tones with subtle warm color accents on the character. Full body visible head to toe, feet touching ground. No text, no UI elements, no watermarks, no logos. Character centered in frame with space around all edges.`;
 }

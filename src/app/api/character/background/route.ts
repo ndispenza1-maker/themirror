@@ -3,7 +3,6 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { getSQL } from "@/lib/db";
 import OpenAI from "openai";
-import { put } from "@vercel/blob";
 
 function getOpenAI() {
   return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -59,11 +58,8 @@ export async function POST() {
 
   const profile = rows[0] as {
     user_id: string;
-    sex: string;
-    age: number;
     occupation: string;
     hobbies: string;
-    relationship_status: string;
     consistent_work: string;
     consistent_personal: string;
     background_image: string | null;
@@ -80,7 +76,6 @@ export async function POST() {
 
   try {
     const prompt = buildBackgroundPrompt(profile);
-
     const openai = getOpenAI();
 
     const response = await openai.images.generate({
@@ -98,14 +93,7 @@ export async function POST() {
       throw new Error("No image data returned from OpenAI");
     }
 
-    // Upload to Vercel Blob for permanent storage
-    const buffer = Buffer.from(imageBase64, "base64");
-    const blob = await put(`backgrounds/${profile.user_id}.png`, buffer, {
-      access: "public",
-      contentType: "image/png",
-    });
-
-    const imageUrl = blob.url;
+    const imageUrl = `data:image/png;base64,${imageBase64}`;
 
     await sql`
       UPDATE mirror_starting_profiles
