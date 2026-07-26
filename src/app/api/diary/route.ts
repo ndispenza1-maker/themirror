@@ -4,6 +4,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { getSQL } from "@/lib/db";
 import { getUserProfile, updateProfileAfterEntry } from "@/lib/creature";
 import { rateLimit } from "@/lib/security";
+import OpenAI from "openai";
 
 const MIRROR_SYSTEM_PROMPT = `You are DailyMorph — an equation engine that reads a person's state from their writing and calculates their accessible potential.
 
@@ -98,15 +99,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Slow down. One entry at a time." }, { status: 429 });
   }
 
-  const apiKey = process.env.MYCLAW_API_KEY || process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     return NextResponse.json({ error: "Engine not configured" }, { status: 500 });
   }
 
-  // MyClaw uses their proxy; direct Anthropic key starts with sk-ant-
-  const baseUrl = apiKey.startsWith("sk-ant-")
-    ? "https://api.anthropic.com/v1/messages"
-    : "https://api.myclaw.ai/v1/messages";
+  const openai = new OpenAI({ apiKey });
 
   try {
     const body = await req.json();
@@ -133,28 +131,16 @@ export async function POST(req: NextRequest) {
       "Read their C. Find new bridges. Calculate ΔI using cumulative EI + new EI. Return JSON only.",
     ].join("\n");
 
-    const response = await fetch(baseUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-6",
-        max_tokens: 1200,
-        system: MIRROR_SYSTEM_PROMPT,
-        messages: [{ role: "user", content: userMessage }],
-      }),
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      max_tokens: 1200,
+      messages: [
+        { role: "system", content: MIRROR_SYSTEM_PROMPT },
+        { role: "user", content: userMessage },
+      ],
     });
 
-    if (!response.ok) {
-      console.error("Anthropic API error:", response.status);
-      return NextResponse.json({ error: "DailyMorph unavailable" }, { status: 502 });
-    }
-
-    const data = await response.json();
-    const rawText = data.content?.[0]?.text || "";
+    const rawText = response.choices?.[0]?.message?.content || "";
 
     let parsed: {
       c: number;
