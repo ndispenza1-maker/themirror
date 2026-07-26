@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { getSQL } from "@/lib/db";
+import { fal } from "@fal-ai/client";
+
+fal.config({ credentials: process.env.FAL_KEY });
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -72,18 +75,35 @@ export async function POST() {
   }
 
   try {
-    const imageDataUrl = buildPlaceholderCharacter(profile);
+    const prompt = buildPrompt(profile);
 
+    const result = await fal.subscribe("fal-ai/flux/dev", {
+      input: {
+        prompt,
+        image_size: "portrait_4_3",
+        num_images: 1,
+        num_inference_steps: 28,
+        guidance_scale: 3.5,
+      },
+    });
+
+    const imageUrl = result.data?.images?.[0]?.url;
+
+    if (!imageUrl) {
+      throw new Error("No image URL returned from fal.ai");
+    }
+
+    // Store the fal.ai CDN URL directly
     await sql`
       UPDATE mirror_starting_profiles
-      SET character_image = ${imageDataUrl},
+      SET character_image = ${imageUrl},
           updated_at = NOW()
       WHERE user_id = ${profile.user_id}
     `;
 
     return NextResponse.json({
       generated: true,
-      image: imageDataUrl,
+      image: imageUrl,
       cached: false,
     });
   } catch (err) {
@@ -92,56 +112,35 @@ export async function POST() {
   }
 }
 
-function buildPlaceholderCharacter(profile: {
+function buildPrompt(profile: {
   sex: string;
   age: number;
-  occupation: string;
-  hobbies: string;
   consistent_work: string;
   consistent_personal: string;
-}) {
-  const sexColor = profile.sex === "male" ? "7cb4ff" : "ff9fd2";
-  const accentColor = profile.sex === "male" ? "a78bfa" : "f472b6";
-  const label = profile.occupation.slice(0, 18).toUpperCase();
-  const personal = profile.consistent_personal.slice(0, 18).toUpperCase();
+}): string {
+  // Build background from consistency data
+  const workContext = profile.consistent_work.toLowerCase();
+  const personalContext = profile.consistent_personal.toLowerCase();
 
-  const svg = `
-  <svg xmlns="http://www.w3.org/2000/svg" width="768" height="1024" viewBox="0 0 768 1024">
-    <defs>
-      <linearGradient id="bg" x1="0" x2="0" y1="0" y2="1">
-        <stop offset="0%" stop-color="#14141b" />
-        <stop offset="100%" stop-color="#09090d" />
-      </linearGradient>
-      <radialGradient id="glow" cx="50%" cy="35%" r="45%">
-        <stop offset="0%" stop-color="#${accentColor}" stop-opacity="0.35" />
-        <stop offset="100%" stop-color="#${accentColor}" stop-opacity="0" />
-      </radialGradient>
-    </defs>
-    <rect width="768" height="1024" fill="url(#bg)" />
-    <rect width="768" height="1024" fill="url(#glow)" />
+  let background = "industrial workshop with warm overhead lighting, concrete floor, workbenches visible in background, open garage door showing outdoor landscape beyond";
 
-    <circle cx="384" cy="250" r="68" fill="#${sexColor}" fill-opacity="0.18" stroke="rgba(255,255,255,0.18)" stroke-width="3" />
-    <rect x="318" y="330" width="132" height="240" rx="54" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.14)" stroke-width="3" />
-    <rect x="275" y="360" width="36" height="190" rx="18" fill="rgba(255,255,255,0.05)" />
-    <rect x="457" y="360" width="36" height="190" rx="18" fill="rgba(255,255,255,0.05)" />
-    <rect x="338" y="570" width="32" height="205" rx="16" fill="rgba(255,255,255,0.05)" />
-    <rect x="398" y="570" width="32" height="205" rx="16" fill="rgba(255,255,255,0.05)" />
+  if (personalContext.includes("surf") || personalContext.includes("beach") || personalContext.includes("ocean")) {
+    background = "coastal workshop, ocean visible through open bay doors, warm golden hour light, surfboards leaning against wall in background";
+  } else if (personalContext.includes("skate") || personalContext.includes("urban")) {
+    background = "urban workshop garage, graffiti-touched walls, city skyline through open door, warm tungsten lighting";
+  } else if (workContext.includes("hvac") || workContext.includes("mechanic") || workContext.includes("repair") || workContext.includes("build")) {
+    background = "mechanical workshop, tool walls, ductwork and equipment visible, warm industrial lighting, open bay door showing tree-lined outdoor space";
+  } else if (personalContext.includes("nature") || personalContext.includes("hik") || personalContext.includes("outdoor")) {
+    background = "rustic workshop at forest edge, open doors revealing mountain trail, natural light filtering through trees";
+  } else if (personalContext.includes("music") || personalContext.includes("art") || personalContext.includes("creat")) {
+    background = "creative studio workshop, instruments and tools on walls, warm ambient lighting, large windows showing evening sky";
+  }
 
-    <rect x="184" y="818" width="400" height="1" fill="rgba(255,255,255,0.08)" />
+  const sexLabel = profile.sex === "male" ? "Male" : "Female";
 
-    <text x="384" y="860" text-anchor="middle" fill="#ececf1" font-family="Arial, sans-serif" font-size="22" font-weight="700">STARTER FORM</text>
-    <text x="384" y="896" text-anchor="middle" fill="#9a9aaa" font-family="Arial, sans-serif" font-size="14" letter-spacing="2">${escapeXml(label)}</text>
-    <text x="384" y="922" text-anchor="middle" fill="#7a7a88" font-family="Arial, sans-serif" font-size="12" letter-spacing="2">${escapeXml(personal)}</text>
-  </svg>`;
+  return `Full-body character portrait, Fortnite art style. ${sexLabel} human, age ${profile.age}, standing in a neutral relaxed pose facing forward. Clean simple outfit — work pants, plain t-shirt, sturdy boots. Nothing flashy. Expression: calm, present, aware. No weapons, no armor, no special effects, no glow. This is a starter form — a human at the beginning of their journey.
 
-  return `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`;
-}
+Background: ${background}
 
-function escapeXml(value: string) {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/\"/g, "&quot;")
-    .replace(/'/g, "&apos;");
+Art direction: Semi-stylized 3D render quality like Fortnite or Pixar. Dramatic cinematic lighting. Dark moody tones with subtle warm color accents. Full body visible head to toe. No text, no UI elements, no watermarks, no logos.`;
 }
