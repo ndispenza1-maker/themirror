@@ -1,13 +1,11 @@
 import NextAuth, { type NextAuthOptions } from "next-auth";
-import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import { getSQL } from "@/lib/db";
 
 /**
  * Auth configuration.
- * 
- * For MVP, using a simple email-based system.
- * Swap to magic link or OAuth when ready.
+ * Google OAuth only — no credentials/email login.
+ * One account per Google email. No multi-account abuse.
  */
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -15,48 +13,10 @@ export const authOptions: NextAuthOptions = {
       clientId: process.env.GOOGLE_CLIENT_ID || "",
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
     }),
-    CredentialsProvider({
-      name: "Email",
-      credentials: {
-        email: { label: "Email", type: "email", placeholder: "you@example.com" },
-      },
-      async authorize(credentials) {
-        if (!credentials?.email) return null;
-
-        const sql = getSQL();
-        const email = credentials.email.toLowerCase().trim();
-
-        // Find or create user
-        const existing = await sql`
-          SELECT id, email, display_name FROM mirror_users WHERE email = ${email}
-        `;
-
-        if (existing.length > 0) {
-          return {
-            id: existing[0].id as string,
-            email: existing[0].email as string,
-            name: existing[0].display_name as string | null,
-          };
-        }
-
-        // Auto-create for MVP (replace with verification later)
-        const created = await sql`
-          INSERT INTO mirror_users (email)
-          VALUES (${email})
-          RETURNING id, email, display_name
-        `;
-
-        return {
-          id: created[0].id as string,
-          email: created[0].email as string,
-          name: created[0].display_name as string | null,
-        };
-      },
-    }),
   ],
   session: {
     strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 days
+    maxAge: 7 * 24 * 60 * 60, // 7 days (was 30 — tighter session window)
   },
   callbacks: {
     async signIn({ user, account }) {

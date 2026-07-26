@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { getSQL } from "@/lib/db";
 import { getUserProfile, updateProfileAfterEntry } from "@/lib/creature";
+import { rateLimit } from "@/lib/security";
 
 const MIRROR_SYSTEM_PROMPT = `You are DailyMorph — an equation engine that reads a person's state from their writing and calculates their accessible potential.
 
@@ -90,6 +91,13 @@ export async function POST(req: NextRequest) {
   }
 
   const userId = (session.user as { id: string }).id;
+
+  // Rate limit: 10 diary entries per hour per user
+  const { allowed } = rateLimit(`diary:${userId}`, 10, 60 * 60 * 1000);
+  if (!allowed) {
+    return NextResponse.json({ error: "Slow down. One entry at a time." }, { status: 429 });
+  }
+
   const apiKey = process.env.ANTHROPIC_API_KEY || process.env.MYCLAW_API_KEY;
   if (!apiKey) {
     return NextResponse.json({ error: "Engine not configured" }, { status: 500 });

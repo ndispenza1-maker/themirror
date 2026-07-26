@@ -1,55 +1,21 @@
 "use client";
 
-import { useState } from "react";
 import { signIn } from "next-auth/react";
 
 export default function LoginPage() {
-  const [mode, setMode] = useState<"login" | "create">("login");
-  const [email, setEmail] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function handleEmail(e: React.FormEvent) {
-    e.preventDefault();
-    if (!email.trim()) return;
-
-    setLoading(true);
-    setError(null);
-
-    const result = await signIn("credentials", {
-      email: email.trim().toLowerCase(),
-      redirect: true,
-      callbackUrl: "/",
-    });
-
-    if (result?.error) {
-      setError("Couldn't sign in. Try again.");
-      setLoading(false);
-    }
-  }
-
-  async function handleGoogle() {
-    setLoading(true);
-    setError(null);
-    await signIn("google", { callbackUrl: "/" });
-  }
-
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center px-4">
+    <main className="fixed inset-0 flex flex-col items-center justify-center bg-[#0a0a0f] px-4">
       <div className="w-full max-w-sm space-y-8">
         {/* Header */}
-        <div className="text-center space-y-2">
-          <h1 className="text-3xl font-bold text-[var(--foreground)]">DailyMorph</h1>
-          <p className="text-sm text-[var(--muted)]">
-            {mode === "login" ? "See your reflection." : "Create your reflection."}
-          </p>
+        <div className="text-center space-y-3">
+          <h1 className="text-3xl font-bold text-white">DailyMorph</h1>
+          <p className="text-sm text-white/50">Your creature is waiting.</p>
         </div>
 
-        {/* Google Sign In */}
+        {/* Google Sign In — only option */}
         <button
-          onClick={handleGoogle}
-          disabled={loading}
-          className="w-full flex items-center justify-center gap-3 px-5 py-3 bg-[var(--surface-light)] border border-[var(--border)] rounded-lg text-[var(--foreground)] font-medium hover:bg-[var(--border)]/30 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          onClick={() => signIn("google", { callbackUrl: "/" })}
+          className="w-full flex items-center justify-center gap-3 px-5 py-3.5 bg-white/5 border border-white/10 rounded-xl text-white font-medium hover:bg-white/10 hover:border-white/20 transition-all"
         >
           <svg className="w-5 h-5" viewBox="0 0 24 24" aria-hidden="true">
             <path
@@ -72,67 +38,9 @@ export default function LoginPage() {
           Continue with Google
         </button>
 
-        {/* Divider */}
-        <div className="flex items-center gap-4">
-          <div className="flex-1 h-px bg-[var(--border)]" />
-          <span className="text-xs text-[var(--muted)]">or</span>
-          <div className="flex-1 h-px bg-[var(--border)]" />
-        </div>
-
-        {/* Email Form */}
-        <form onSubmit={handleEmail} className="space-y-4">
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="your@email.com"
-            required
-            className="w-full px-4 py-3 bg-[var(--surface-light)] border border-[var(--border)] rounded-lg text-[var(--foreground)] placeholder:text-[var(--muted)]/50 focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
-            autoFocus
-          />
-          <button
-            type="submit"
-            disabled={loading || !email.trim()}
-            className="w-full px-5 py-3 bg-[var(--accent)] text-[var(--background)] font-semibold rounded-lg hover:bg-[var(--accent-dim)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-          >
-            {loading
-              ? "Opening..."
-              : mode === "login"
-                ? "Sign In"
-                : "Create Account"}
-          </button>
-        </form>
-
-        {error && <p className="text-sm text-red-400 text-center">{error}</p>}
-
-        {/* Toggle Login / Create */}
-        <div className="text-center">
-          {mode === "login" ? (
-            <p className="text-sm text-[var(--muted)]">
-              New here?{" "}
-              <button
-                onClick={() => { setMode("create"); setError(null); }}
-                className="text-[var(--accent)] hover:underline"
-              >
-                Create an account
-              </button>
-            </p>
-          ) : (
-            <p className="text-sm text-[var(--muted)]">
-              Already have an account?{" "}
-              <button
-                onClick={() => { setMode("login"); setError(null); }}
-                className="text-[var(--accent)] hover:underline"
-              >
-                Sign in
-              </button>
-            </p>
-          )}
-        </div>
-
         {/* Footer */}
-        <p className="text-[10px] text-[var(--muted)] text-center">
-          No password required. Your entries are private.
+        <p className="text-[11px] text-white/30 text-center">
+          One account per Google email. No burner accounts.
         </p>
       </div>
     </main>

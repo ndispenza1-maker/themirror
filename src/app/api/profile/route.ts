@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { getSQL } from "@/lib/db";
+import { rateLimit } from "@/lib/security";
 
 // GET — fetch current user's starting profile
 export async function GET() {
@@ -37,6 +38,12 @@ export async function POST(req: Request) {
   const sql = getSQL();
   const email = session.user.email.toLowerCase().trim();
 
+  // Rate limit: 5 profile saves per hour (prevents spamming)
+  const { allowed } = rateLimit(`profile:${email}`, 5, 60 * 60 * 1000);
+  if (!allowed) {
+    return NextResponse.json({ error: "Too many attempts" }, { status: 429 });
+  }
+
   const body = await req.json();
   const { creature, occupation, hobbies, consistentWork, consistentPersonal } = body;
 
@@ -49,6 +56,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid creature value" }, { status: 400 });
   }
 
+  // Sanitize string lengths
+  const cleanOccupation = String(occupation).trim().slice(0, 120);
+  const cleanHobbies = String(hobbies).trim().slice(0, 200);
+  const cleanWork = String(consistentWork).trim().slice(0, 200);
+  const cleanPersonal = String(consistentPersonal).trim().slice(0, 200);
+
+  if (!cleanOccupation || !cleanHobbies || !cleanWork || !cleanPersonal) {
+    return NextResponse.json({ error: "All fields are required" }, { status: 400 });
+  }
+
   // Get user ID
   const userRows = await sql`SELECT id FROM mirror_users WHERE email = ${email}`;
   if (userRows.length === 0) {
@@ -59,7 +76,7 @@ export async function POST(req: Request) {
   // Upsert starting profile
   await sql`
     INSERT INTO mirror_starting_profiles (user_id, creature, occupation, hobbies, consistent_work, consistent_personal)
-    VALUES (${userId}, ${creature}, ${occupation.trim().slice(0, 120)}, ${hobbies.trim().slice(0, 200)}, ${consistentWork.trim().slice(0, 200)}, ${consistentPersonal.trim().slice(0, 200)})
+    VALUES (${userId}, ${creature}, ${cleanOccupation}, ${cleanHobbies}, ${cleanWork}, ${cleanPersonal})
     ON CONFLICT (user_id) DO UPDATE SET
       creature = EXCLUDED.creature,
       occupation = EXCLUDED.occupation,

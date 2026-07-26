@@ -11,9 +11,12 @@ const nextConfig = {
         { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
         {
           key: "Content-Security-Policy",
-          value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.public.blob.vercel-storage.com; font-src 'self'; connect-src 'self'; frame-ancestors 'none';"
+          value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://accounts.google.com; frame-ancestors 'none'; form-action 'self' https://accounts.google.com;"
         },
-        { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
+        { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
+        { key: "X-DNS-Prefetch-Control", value: "off" },
+        { key: "X-Download-Options", value: "noopen" },
+        { key: "X-Permitted-Cross-Domain-Policies", value: "none" },
       ],
     },
   ],
