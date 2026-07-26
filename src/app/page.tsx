@@ -152,9 +152,10 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="absolute inset-0 flex flex-col justify-end">
-            <div className="relative flex-1 overflow-hidden">
-              <div className="absolute bottom-[28%] left-0 right-0 h-24 bg-[linear-gradient(180deg,transparent,rgba(167,139,250,0.06))]" />
+          <div className="absolute inset-0">
+            <div className="relative h-full w-full overflow-hidden">
+              {/* Background environment - fills entire display */}
+              <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_0%,rgba(167,139,250,0.06)_60%,rgba(20,20,28,0.62)_85%)]" />
               <div className="absolute bottom-[18%] left-[-10%] h-36 w-[45%] rounded-[50%] bg-[rgba(88,88,112,0.28)] blur-[1px]" />
               <div className="absolute bottom-[16%] left-[22%] h-40 w-[38%] rounded-[50%] bg-[rgba(76,76,98,0.32)] blur-[1px]" />
               <div className="absolute bottom-[17%] right-[-6%] h-44 w-[42%] rounded-[50%] bg-[rgba(64,64,84,0.32)] blur-[1px]" />
@@ -198,26 +199,7 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="relative h-[18%] min-h-[92px] border-t border-[rgba(255,255,255,0.04)] bg-[linear-gradient(180deg,#15151b_0%,#0c0c10_100%)]">
-              <div className="absolute inset-x-0 top-3 flex items-center justify-center gap-3 px-4 text-[10px] uppercase tracking-[0.18em] text-[var(--muted)] md:justify-between md:px-6">
-                <span>World Display</span>
-                <span className="hidden md:inline">Character • Environment • Motion</span>
-              </div>
-              <div className="absolute bottom-4 left-4 right-4 flex flex-wrap items-end justify-between gap-3 md:left-6 md:right-6">
-                <div className="rounded-2xl border border-[var(--border)] bg-[rgba(17,17,20,0.74)] px-4 py-3 backdrop-blur">
-                  <p className="text-[10px] uppercase tracking-[0.18em] text-[var(--muted)]">State</p>
-                  <p className="mt-1 text-sm text-[var(--foreground)]">
-                    {characterImage ? "Starting profile recorded" : profileCompleted ? "Profile saved — generating form" : "Awaiting initial inputs"}
-                  </p>
-                </div>
-                <div className="rounded-2xl border border-[var(--border)] bg-[rgba(17,17,20,0.74)] px-4 py-3 backdrop-blur">
-                  <p className="text-[10px] uppercase tracking-[0.18em] text-[var(--muted)]">Environment</p>
-                  <p className="mt-1 text-sm text-[var(--foreground)]">
-                    {profileCompleted ? currentConsistency : "Not formed yet"}
-                  </p>
-                </div>
-              </div>
-            </div>
+
           </div>
         </section>
 
