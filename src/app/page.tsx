@@ -112,8 +112,8 @@ export default function Home() {
         <img
           src={`/assets/creature-${creature}.png`}
           alt={creature}
-          className={`absolute bottom-[8%] left-1/2 z-10 w-auto -translate-x-1/2 object-contain drop-shadow-[0_8px_32px_rgba(0,0,0,0.8)] transition-all duration-700 ${
-            phase === "ready" || phase === "play" ? "h-[55%]" : "h-[40%] opacity-70"
+          className={`absolute bottom-[20%] left-1/2 z-10 w-auto -translate-x-1/2 object-contain drop-shadow-[0_8px_32px_rgba(0,0,0,0.8)] transition-all duration-700 ${
+            phase === "ready" || phase === "play" ? "h-[50%]" : "h-[35%] opacity-70"
           }`}
         />
       )}
@@ -124,9 +124,14 @@ export default function Home() {
           <span className="text-[11px] font-medium tracking-wider text-white/70">DailyMorph</span>
         </div>
         {phase === "ready" && (
-          <div className="flex items-center gap-3">
-            <div className="rounded-full border border-white/10 bg-black/50 px-4 py-1.5 backdrop-blur">
-              <span className="text-[11px] tracking-wider text-white/50">ΔI: </span>
+          <div className="flex items-center gap-2">
+            <div className="rounded-full border border-white/10 bg-black/50 px-3 py-1.5 backdrop-blur">
+              <span className="text-[10px] uppercase tracking-wider text-white/40">
+                {deltaI < 200 ? "Pure Animal" : deltaI < 800 ? "Awakening" : deltaI < 2000 ? "Hybrid" : deltaI < 5000 ? "Spirit" : deltaI < 15000 ? "Full Spirit" : "Transcendent"}
+              </span>
+            </div>
+            <div className="rounded-full border border-white/10 bg-black/50 px-3 py-1.5 backdrop-blur">
+              <span className="text-[10px] tracking-wider text-white/40">ΔI </span>
               <span className="text-[11px] font-bold text-white">{deltaI}</span>
             </div>
           </div>
