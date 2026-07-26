@@ -9,6 +9,6 @@ export default withAuth({
 export const config = {
   matcher: [
     // Protect all routes except login, static assets, and API auth
-    "/((?!login|api/auth|_next/static|_next/image|favicon.ico).*)",
+    "/((?!login|assets|api/auth|_next/static|_next/image|favicon.ico).*)",
   ],
 };
