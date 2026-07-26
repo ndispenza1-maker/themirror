@@ -21,6 +21,10 @@ export default function Home() {
   const [characterImage, setCharacterImage] = useState<string | null>(null);
   const [characterLoading, setCharacterLoading] = useState(false);
   const [profileExpanded, setProfileExpanded] = useState(false);
+  const [extraInfoExpanded, setExtraInfoExpanded] = useState(false);
+  const [extraInfo, setExtraInfo] = useState("");
+  const [extraInfoSaved, setExtraInfoSaved] = useState(false);
+  const [extraInfoSaving, setExtraInfoSaving] = useState(false);
 
   useEffect(() => {
     fetch("/api/tos")
@@ -274,6 +278,71 @@ export default function Home() {
                     <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-light)]/40 p-4 md:col-span-1">
                       <p className="text-[10px] uppercase tracking-[0.18em] text-[var(--muted)]">Most consistent personally</p>
                       <p className="mt-2 text-sm text-[var(--foreground)]">{profilePreview?.consistentPersonal}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Extra Info dropdown */}
+              <button
+                onClick={() => setExtraInfoExpanded(!extraInfoExpanded)}
+                className="flex items-center justify-between w-full mt-2"
+              >
+                <div className="text-left">
+                  <p className="text-[10px] uppercase tracking-[0.28em] text-[var(--muted)]">Extra Info</p>
+                  <p className="mt-1 text-sm text-[var(--muted)]">
+                    {extraInfoSaved ? "Additional context saved" : "Add more context for the equation"}
+                  </p>
+                </div>
+                <svg
+                  className={`w-5 h-5 text-[var(--muted)] transition-transform duration-200 ${extraInfoExpanded ? "rotate-180" : ""}`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+
+              {extraInfoExpanded && (
+                <div className="space-y-3 animate-[fadeIn_0.2s_ease-out]">
+                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-light)]/50 p-4">
+                    <p className="text-[10px] uppercase tracking-[0.18em] text-[var(--muted)] mb-2">Anything else that shapes how you process the world?</p>
+                    <p className="text-[11px] text-[var(--muted)]/70 mb-3">Past experience, skills, challenges, things you keep coming back to. This feeds into how the equation reads your existing information.</p>
+                    <textarea
+                      value={extraInfo}
+                      onChange={(e) => {
+                        setExtraInfo(e.target.value);
+                        setExtraInfoSaved(false);
+                      }}
+                      placeholder="Anything that helps paint the full picture..."
+                      maxLength={2000}
+                      rows={4}
+                      className="w-full rounded-xl border border-[var(--border)] bg-[rgba(255,255,255,0.02)] px-3 py-2.5 text-sm text-[var(--foreground)] placeholder:text-[var(--muted)]/40 focus:border-[var(--accent)]/50 focus:outline-none transition-colors resize-none"
+                    />
+                    <div className="flex items-center justify-between mt-3">
+                      <p className="text-[10px] text-[var(--muted)]">{extraInfo.length}/2000</p>
+                      <button
+                        onClick={async () => {
+                          if (!extraInfo.trim()) return;
+                          setExtraInfoSaving(true);
+                          try {
+                            const res = await fetch("/api/profile/extra", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ extraInfo: extraInfo.trim() }),
+                            });
+                            if (res.ok) setExtraInfoSaved(true);
+                          } finally {
+                            setExtraInfoSaving(false);
+                          }
+                        }}
+                        disabled={extraInfoSaving || !extraInfo.trim()}
+                        className="rounded-xl bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-[var(--background)] hover:bg-[var(--accent-dim)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                      >
+                        {extraInfoSaving ? "Saving..." : extraInfoSaved ? "Saved ✓" : "Save"}
+                      </button>
                     </div>
                   </div>
                 </div>
