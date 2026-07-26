@@ -4,7 +4,7 @@ import { useState } from "react";
 
 interface StartingProfileData {
   sex: "male" | "female" | null;
-  relationshipStatus: "single" | "relationship" | null;
+  creature: "deer" | "snake" | "dog" | null;
   age: string;
   occupation: string;
   hobbies: string;
@@ -20,7 +20,7 @@ export default function StartingProfile({ onComplete }: StartingProfileProps) {
   const [step, setStep] = useState(1);
   const [data, setData] = useState<StartingProfileData>({
     sex: null,
-    relationshipStatus: null,
+    creature: null,
     age: "",
     occupation: "",
     hobbies: "",
@@ -31,7 +31,7 @@ export default function StartingProfile({ onComplete }: StartingProfileProps) {
   const totalSteps = 3;
 
   function canAdvance(): boolean {
-    if (step === 1) return data.sex !== null && data.relationshipStatus !== null && data.age.trim().length > 0;
+    if (step === 1) return data.sex !== null && data.creature !== null && data.age.trim().length > 0;
     if (step === 2) return data.occupation.trim().length > 0 && data.hobbies.trim().length > 0;
     if (step === 3) return data.consistentWork.trim().length > 0 && data.consistentPersonal.trim().length > 0;
     return false;
@@ -97,30 +97,31 @@ export default function StartingProfile({ onComplete }: StartingProfileProps) {
             </div>
           </div>
 
-          {/* Relationship Status */}
+          {/* Starting Creature */}
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-light)]/50 p-4">
-            <p className="text-[10px] uppercase tracking-[0.18em] text-[var(--muted)]">Relationship</p>
+            <p className="text-[10px] uppercase tracking-[0.18em] text-[var(--muted)]">Starting Creature</p>
+            <p className="mt-1 text-[11px] text-[var(--muted)]/70">Which energy runs you right now?</p>
             <div className="mt-3 flex gap-2">
-              <button
-                onClick={() => setData({ ...data, relationshipStatus: "single" })}
-                className={`flex-1 rounded-xl border px-3 py-2.5 text-sm transition-colors ${
-                  data.relationshipStatus === "single"
-                    ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--foreground)]"
-                    : "border-[var(--border)] text-[var(--muted)] hover:border-[var(--accent)]/40"
-                }`}
-              >
-                Single
-              </button>
-              <button
-                onClick={() => setData({ ...data, relationshipStatus: "relationship" })}
-                className={`flex-1 rounded-xl border px-3 py-2.5 text-sm transition-colors ${
-                  data.relationshipStatus === "relationship"
-                    ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--foreground)]"
-                    : "border-[var(--border)] text-[var(--muted)] hover:border-[var(--accent)]/40"
-                }`}
-              >
-                Relationship
-              </button>
+              {(["deer", "snake", "dog"] as const).map((c) => (
+                <button
+                  key={c}
+                  onClick={() => setData({ ...data, creature: c })}
+                  className={`flex-1 flex flex-col items-center gap-1.5 rounded-xl border px-2 py-2.5 text-sm transition-colors ${
+                    data.creature === c
+                      ? "border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--foreground)]"
+                      : "border-[var(--border)] text-[var(--muted)] hover:border-[var(--accent)]/40"
+                  }`}
+                >
+                  <img
+                    src={`/assets/creature-${c}.png`}
+                    alt={c}
+                    className="h-10 w-10 object-contain"
+                  />
+                  <span className="text-[10px] uppercase tracking-wider">
+                    {c === "deer" ? "Fear" : c === "snake" ? "Hunger" : "Love"}
+                  </span>
+                </button>
+              ))}
             </div>
           </div>
 

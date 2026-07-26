@@ -38,10 +38,10 @@ export async function POST(req: Request) {
   const email = session.user.email.toLowerCase().trim();
 
   const body = await req.json();
-  const { sex, relationshipStatus, age, occupation, hobbies, consistentWork, consistentPersonal } = body;
+  const { sex, creature, age, occupation, hobbies, consistentWork, consistentPersonal } = body;
 
   // Validation
-  if (!sex || !relationshipStatus || !age || !occupation || !hobbies || !consistentWork || !consistentPersonal) {
+  if (!sex || !creature || !age || !occupation || !hobbies || !consistentWork || !consistentPersonal) {
     return NextResponse.json({ error: "All fields are required" }, { status: 400 });
   }
 
@@ -49,8 +49,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid sex value" }, { status: 400 });
   }
 
-  if (!["single", "relationship"].includes(relationshipStatus)) {
-    return NextResponse.json({ error: "Invalid relationship status" }, { status: 400 });
+  if (!["deer", "snake", "dog"].includes(creature)) {
+    return NextResponse.json({ error: "Invalid creature value" }, { status: 400 });
   }
 
   const ageNum = parseInt(age, 10);
@@ -67,11 +67,11 @@ export async function POST(req: Request) {
 
   // Upsert starting profile
   await sql`
-    INSERT INTO mirror_starting_profiles (user_id, sex, relationship_status, age, occupation, hobbies, consistent_work, consistent_personal)
-    VALUES (${userId}, ${sex}, ${relationshipStatus}, ${ageNum}, ${occupation.trim().slice(0, 120)}, ${hobbies.trim().slice(0, 200)}, ${consistentWork.trim().slice(0, 200)}, ${consistentPersonal.trim().slice(0, 200)})
+    INSERT INTO mirror_starting_profiles (user_id, sex, creature, age, occupation, hobbies, consistent_work, consistent_personal)
+    VALUES (${userId}, ${sex}, ${creature}, ${ageNum}, ${occupation.trim().slice(0, 120)}, ${hobbies.trim().slice(0, 200)}, ${consistentWork.trim().slice(0, 200)}, ${consistentPersonal.trim().slice(0, 200)})
     ON CONFLICT (user_id) DO UPDATE SET
       sex = EXCLUDED.sex,
-      relationship_status = EXCLUDED.relationship_status,
+      creature = EXCLUDED.creature,
       age = EXCLUDED.age,
       occupation = EXCLUDED.occupation,
       hobbies = EXCLUDED.hobbies,

@@ -7,7 +7,7 @@ import StartingProfile from "@/components/StartingProfile";
 
 interface StartingProfileData {
   sex: "male" | "female" | null;
-  relationshipStatus: "single" | "relationship" | null;
+  creature: "deer" | "snake" | "dog" | null;
   age: string;
   occupation: string;
   hobbies: string;
@@ -44,7 +44,7 @@ export default function Home() {
         if (data.profile) {
           setProfilePreview({
             sex: data.profile.sex,
-            relationshipStatus: data.profile.relationship_status,
+            creature: data.profile.creature,
             age: String(data.profile.age),
             occupation: data.profile.occupation,
             hobbies: data.profile.hobbies,
@@ -117,10 +117,16 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Character placeholder — fixed assets coming next */}
+          {/* Character creature on the background */}
           <div className="absolute inset-0">
             <div className="relative h-full w-full overflow-hidden">
-              {/* Character will be placed here once male/female assets are approved */}
+              {profilePreview?.creature && (
+                <img
+                  src={`/assets/creature-${profilePreview.creature}.png`}
+                  alt={profilePreview.creature}
+                  className="absolute bottom-[5%] left-1/2 z-20 h-[65%] w-auto -translate-x-1/2 object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.6)]"
+                />
+              )}
             </div>
           </div>
         </section>
@@ -162,8 +168,19 @@ export default function Home() {
                       <p className="mt-2 text-sm text-[var(--foreground)] capitalize">{profilePreview?.sex}</p>
                     </div>
                     <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-light)]/40 p-4">
-                      <p className="text-[10px] uppercase tracking-[0.18em] text-[var(--muted)]">Relationship</p>
-                      <p className="mt-2 text-sm text-[var(--foreground)] capitalize">{profilePreview?.relationshipStatus}</p>
+                      <p className="text-[10px] uppercase tracking-[0.18em] text-[var(--muted)]">Creature</p>
+                      <div className="mt-2 flex items-center gap-2">
+                        {profilePreview?.creature && (
+                          <img
+                            src={`/assets/creature-${profilePreview.creature}.png`}
+                            alt={profilePreview.creature}
+                            className="h-8 w-8 object-contain"
+                          />
+                        )}
+                        <p className="text-sm text-[var(--foreground)] capitalize">
+                          {profilePreview?.creature === "deer" ? "Deer (Fear)" : profilePreview?.creature === "snake" ? "Snake (Hunger)" : profilePreview?.creature === "dog" ? "Dog (Love)" : ""}
+                        </p>
+                      </div>
                     </div>
                     <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-light)]/40 p-4">
                       <p className="text-[10px] uppercase tracking-[0.18em] text-[var(--muted)]">Age</p>
