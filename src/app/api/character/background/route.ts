@@ -2,9 +2,12 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { getSQL } from "@/lib/db";
-import { fal } from "@fal-ai/client";
+import OpenAI from "openai";
+import { put } from "@vercel/blob";
 
-fal.config({ credentials: process.env.FAL_KEY });
+function getOpenAI() {
+  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+}
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -78,21 +81,31 @@ export async function POST() {
   try {
     const prompt = buildBackgroundPrompt(profile);
 
-    const result = await fal.subscribe("fal-ai/flux/dev", {
-      input: {
-        prompt,
-        image_size: "landscape_16_9",
-        num_images: 1,
-        num_inference_steps: 28,
-        guidance_scale: 3.5,
-      },
+    const openai = getOpenAI();
+
+    const response = await openai.images.generate({
+      model: "gpt-image-1.5",
+      prompt,
+      n: 1,
+      size: "1536x1024",
+      background: "opaque",
+      output_format: "png",
     });
 
-    const imageUrl = result.data?.images?.[0]?.url;
+    const imageBase64 = response.data?.[0]?.b64_json;
 
-    if (!imageUrl) {
-      throw new Error("No image URL returned from fal.ai");
+    if (!imageBase64) {
+      throw new Error("No image data returned from OpenAI");
     }
+
+    // Upload to Vercel Blob for permanent storage
+    const buffer = Buffer.from(imageBase64, "base64");
+    const blob = await put(`backgrounds/${profile.user_id}.png`, buffer, {
+      access: "public",
+      contentType: "image/png",
+    });
+
+    const imageUrl = blob.url;
 
     await sql`
       UPDATE mirror_starting_profiles
@@ -125,10 +138,8 @@ function buildBackgroundPrompt(profile: {
   const occupation = profile.occupation.toLowerCase();
   const extra = (profile.extra_info || "").toLowerCase();
 
-  // Gather environmental cues from all profile data
   const cues: string[] = [];
 
-  // Work environment cues
   if (work.includes("hvac") || work.includes("mechanic") || work.includes("repair") || work.includes("facilities") || occupation.includes("hvac") || occupation.includes("technician")) {
     cues.push("mechanical workshop interior", "tool walls with wrenches and gauges", "ductwork and copper piping", "industrial workbench");
   }
@@ -139,7 +150,6 @@ function buildBackgroundPrompt(profile: {
     cues.push("modern workspace", "multiple monitors", "city view through windows");
   }
 
-  // Personal/hobby cues
   if (personal.includes("skate") || hobbies.includes("skate")) {
     cues.push("concrete half-pipe visible in distance", "worn skateboard ramps");
   }
@@ -159,7 +169,6 @@ function buildBackgroundPrompt(profile: {
     cues.push("half-finished projects on workbench", "hand tools organized on pegboard");
   }
 
-  // Extra info cues
   if (extra.includes("nature") || extra.includes("outdoor")) {
     cues.push("large open bay doors revealing natural landscape");
   }
@@ -167,7 +176,6 @@ function buildBackgroundPrompt(profile: {
     cues.push("circuit boards and electronics on shelves");
   }
 
-  // Default baseline if no strong cues
   if (cues.length === 0) {
     cues.push("clean workshop garage", "organized tool wall", "open bay door with natural light");
   }
@@ -176,5 +184,5 @@ function buildBackgroundPrompt(profile: {
 
   return `Wide cinematic landscape scene, no people, no characters, no figures. A personal workshop/garage environment viewed from inside looking out. ${environmentDetails}. The space feels lived-in, personal, well-used but organized. Large open bay door or windows on one side letting in warm golden hour light. The outdoor area beyond shows a mix of nature and built environment.
 
-Art direction: Semi-stylized 3D render quality, Fortnite/Pixar environmental art style. Cinematic widescreen composition. Dramatic warm lighting with cool shadow contrast. Rich detail and depth. Moody atmosphere. No text, no UI, no watermarks, no people, no characters.`;
+Semi-stylized 3D render quality, Fortnite/Pixar environmental art style. Cinematic widescreen composition. Dramatic warm lighting with cool shadow contrast. Rich detail and depth. Moody atmosphere. No text, no UI, no watermarks, no people, no characters.`;
 }

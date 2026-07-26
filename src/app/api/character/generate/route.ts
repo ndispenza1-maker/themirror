@@ -2,9 +2,12 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { getSQL } from "@/lib/db";
-import { fal } from "@fal-ai/client";
+import OpenAI from "openai";
+import { put } from "@vercel/blob";
 
-fal.config({ credentials: process.env.FAL_KEY });
+function getOpenAI() {
+  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+}
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -77,50 +80,44 @@ export async function POST() {
   try {
     const prompt = buildPrompt(profile);
 
-    // Step 1: Generate character image
-    const result = await fal.subscribe("fal-ai/flux/dev", {
-      input: {
-        prompt,
-        image_size: "portrait_4_3",
-        num_images: 1,
-        num_inference_steps: 28,
-        guidance_scale: 3.5,
-      },
+    const openai = getOpenAI();
+
+    // Single call: generate character with transparent background
+    const response = await openai.images.generate({
+      model: "gpt-image-1.5",
+      prompt,
+      n: 1,
+      size: "1024x1536",
+      background: "transparent",
+      output_format: "png",
     });
 
-    const rawImageUrl = result.data?.images?.[0]?.url;
+    const imageBase64 = response.data?.[0]?.b64_json;
 
-    if (!rawImageUrl) {
-      throw new Error("No image URL returned from fal.ai");
+    if (!imageBase64) {
+      throw new Error("No image data returned from OpenAI");
     }
 
-    // Step 2: Remove background to get transparent PNG cutout
-    const bgRemoval = await fal.subscribe("fal-ai/birefnet/v2", {
-      input: {
-        image_url: rawImageUrl,
-        model: "General Use (Light)",
-        operating_resolution: "1024x1024",
-        output_format: "png",
-      },
+    // Upload to Vercel Blob for permanent storage
+    const buffer = Buffer.from(imageBase64, "base64");
+    const blob = await put(`characters/${profile.user_id}.png`, buffer, {
+      access: "public",
+      contentType: "image/png",
     });
 
-    const cutoutUrl = bgRemoval.data?.image?.url;
+    const imageUrl = blob.url;
 
-    if (!cutoutUrl) {
-      throw new Error("Background removal failed");
-    }
-
-    // Store the transparent cutout URL
+    // Store the permanent blob URL
     await sql`
       UPDATE mirror_starting_profiles
-      SET character_image = ${cutoutUrl},
+      SET character_image = ${imageUrl},
           updated_at = NOW()
       WHERE user_id = ${profile.user_id}
     `;
 
     return NextResponse.json({
       generated: true,
-      image: cutoutUrl,
+      image: imageUrl,
       cached: false,
     });
   } catch (err) {
@@ -132,32 +129,10 @@ export async function POST() {
 function buildPrompt(profile: {
   sex: string;
   age: number;
-  consistent_work: string;
-  consistent_personal: string;
 }): string {
-  // Build background from consistency data
-  const workContext = profile.consistent_work.toLowerCase();
-  const personalContext = profile.consistent_personal.toLowerCase();
-
-  let background = "industrial workshop with warm overhead lighting, concrete floor, workbenches visible in background, open garage door showing outdoor landscape beyond";
-
-  if (personalContext.includes("surf") || personalContext.includes("beach") || personalContext.includes("ocean")) {
-    background = "coastal workshop, ocean visible through open bay doors, warm golden hour light, surfboards leaning against wall in background";
-  } else if (personalContext.includes("skate") || personalContext.includes("urban")) {
-    background = "urban workshop garage, graffiti-touched walls, city skyline through open door, warm tungsten lighting";
-  } else if (workContext.includes("hvac") || workContext.includes("mechanic") || workContext.includes("repair") || workContext.includes("build")) {
-    background = "mechanical workshop, tool walls, ductwork and equipment visible, warm industrial lighting, open bay door showing tree-lined outdoor space";
-  } else if (personalContext.includes("nature") || personalContext.includes("hik") || personalContext.includes("outdoor")) {
-    background = "rustic workshop at forest edge, open doors revealing mountain trail, natural light filtering through trees";
-  } else if (personalContext.includes("music") || personalContext.includes("art") || personalContext.includes("creat")) {
-    background = "creative studio workshop, instruments and tools on walls, warm ambient lighting, large windows showing evening sky";
-  }
-
   const sexLabel = profile.sex === "male" ? "Male" : "Female";
 
   return `Full-body character portrait, Fortnite art style. ${sexLabel} human, age ${profile.age}, standing in a neutral relaxed pose facing forward. Clean simple outfit — work pants, plain t-shirt, sturdy boots. Nothing flashy. Expression: calm, present, aware. No weapons, no armor, no special effects, no glow. This is a starter form — a human at the beginning of their journey.
 
-Background: ${background}
-
-Art direction: Semi-stylized 3D render quality like Fortnite or Pixar. Dramatic cinematic lighting. Dark moody tones with subtle warm color accents. Full body visible head to toe. No text, no UI elements, no watermarks, no logos.`;
+Semi-stylized 3D render quality like Fortnite or Pixar. Dramatic cinematic lighting from above and slightly in front. Dark moody tones with subtle warm color accents on the character. Full body visible head to toe, feet touching ground. No text, no UI elements, no watermarks, no logos. Character centered in frame with space around all edges.`;
 }
