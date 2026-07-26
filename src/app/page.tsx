@@ -26,6 +26,8 @@ export default function Home() {
   const [saving, setSaving] = useState(false);
   const [diaryOpen, setDiaryOpen] = useState(false);
   const [diaryText, setDiaryText] = useState("");
+  const [diarySubmitting, setDiarySubmitting] = useState(false);
+  const [diaryResult, setDiaryResult] = useState<{ deltaI: number; read: string; c: number; lfhDominant: string } | null>(null);
   const [deltaI, setDeltaI] = useState(0);
 
   // Boot: check TOS + profile state
@@ -286,7 +288,7 @@ export default function Home() {
       )}
 
       {/* PHASE: Ready — creature spawned, waiting for first entry */}
-      {phase === "ready" && !diaryOpen && (
+      {phase === "ready" && !diaryOpen && !diaryResult && (
         <div className="absolute inset-x-0 bottom-0 z-20 flex justify-center p-6">
           <div className="flex flex-col items-center gap-4">
             <div className="rounded-full border border-white/10 bg-black/50 px-5 py-2 backdrop-blur">
@@ -300,6 +302,46 @@ export default function Home() {
             >
               ✍️ Write Entry
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Diary result overlay */}
+      {diaryResult && (
+        <div className="absolute inset-0 z-30 flex items-end justify-center p-4 md:items-center">
+          <div className="w-full max-w-lg max-h-[80vh] overflow-y-auto rounded-2xl border border-white/10 bg-[#0d0d12]/95 p-6 backdrop-blur-xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-white">Morph Reading</h2>
+              <button
+                onClick={() => setDiaryResult(null)}
+                className="text-white/40 hover:text-white/80 transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="mb-4 flex gap-3">
+              <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                <span className="text-[10px] uppercase tracking-wider text-white/40">ΔI</span>
+                <p className="text-lg font-bold text-white">{diaryResult.deltaI}</p>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                <span className="text-[10px] uppercase tracking-wider text-white/40">C</span>
+                <p className="text-lg font-bold text-white">{diaryResult.c.toFixed(2)}</p>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                <span className="text-[10px] uppercase tracking-wider text-white/40">Dominant</span>
+                <p className="text-lg font-bold text-white capitalize">{diaryResult.lfhDominant}</p>
+              </div>
+            </div>
+            <p className="text-sm leading-relaxed text-white/70 whitespace-pre-wrap">{diaryResult.read}</p>
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => setDiaryResult(null)}
+                className="rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-black hover:bg-white/90 transition-colors"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -332,23 +374,34 @@ export default function Home() {
             <div className="mt-4 flex items-center justify-between">
               <span className="text-[11px] text-white/30">{diaryText.length}/5000</span>
               <button
-                disabled={diaryText.trim().length < 10}
+                disabled={diaryText.trim().length < 10 || diarySubmitting}
                 onClick={async () => {
-                  const res = await fetch("/api/diary", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ content: diaryText.trim() }),
-                  });
-                  if (res.ok) {
-                    const data = await res.json();
-                    setDeltaI(data.deltaI || 0);
-                    setDiaryText("");
-                    setDiaryOpen(false);
+                  setDiarySubmitting(true);
+                  try {
+                    const res = await fetch("/api/diary", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ content: diaryText.trim() }),
+                    });
+                    if (res.ok) {
+                      const data = await res.json();
+                      setDeltaI(data.deltaI || 0);
+                      setDiaryText("");
+                      setDiaryOpen(false);
+                      setDiaryResult({
+                        deltaI: data.deltaI || 0,
+                        read: data.read || "",
+                        c: data.c || 0,
+                        lfhDominant: data.lfhDominant || "hunger",
+                      });
+                    }
+                  } finally {
+                    setDiarySubmitting(false);
                   }
                 }}
                 className="rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-black hover:bg-white/90 transition-colors disabled:opacity-20"
               >
-                Submit
+                {diarySubmitting ? "Reading..." : "Submit"}
               </button>
             </div>
           </div>

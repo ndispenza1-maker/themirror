@@ -98,10 +98,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Slow down. One entry at a time." }, { status: 429 });
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY || process.env.MYCLAW_API_KEY;
+  const apiKey = process.env.MYCLAW_API_KEY || process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     return NextResponse.json({ error: "Engine not configured" }, { status: 500 });
   }
+
+  // MyClaw uses their proxy; direct Anthropic key starts with sk-ant-
+  const baseUrl = apiKey.startsWith("sk-ant-")
+    ? "https://api.anthropic.com/v1/messages"
+    : "https://api.myclaw.ai/v1/messages";
 
   try {
     const body = await req.json();
@@ -128,7 +133,7 @@ export async function POST(req: NextRequest) {
       "Read their C. Find new bridges. Calculate ΔI using cumulative EI + new EI. Return JSON only.",
     ].join("\n");
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
+    const response = await fetch(baseUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
