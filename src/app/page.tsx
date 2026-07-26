@@ -61,7 +61,12 @@ export default function Home() {
     fetch("/api/character/generate")
       .then((r) => r.json())
       .then((data) => {
-        if (data.image) setCharacterImage(data.image);
+        if (data.generated && data.image) {
+          setCharacterImage(data.image);
+        } else if (!data.generated) {
+          // No cached image — trigger generation
+          generateCharacter();
+        }
       })
       .catch(() => {});
   }, [profileCompleted]);
